@@ -21,9 +21,9 @@ public class MCF_Migration {
 	public static int lastMB;
 	public static int migration;
 
-
 	@SuppressWarnings("unused")
-	public static void main(String[] args) {
+	public static void main(String[] args) 
+	{
 
 		//generate mcf_migration.inp file
 		//call other class to begin generating the file. Pass over user input.
@@ -179,18 +179,22 @@ private static List<Integer> MBsLocation( int boxes) {
 	return list;
 }
 
-private static List<Integer> VMPairsLocation(int vmPairs,int resCap){
+private static List<Integer> VMPairsLocation(int vmPairs,int resCap)
+{
 
 	int numPms = (int)Math.pow(k, 3)/4;
 	List<Integer> list = new ArrayList<Integer>();
 
 	Random r = new Random();
-
-	for(int i = 0;i < vmPairs * 2;i++) {
-
+	int prevresult;
+	for(int i = 0;i < vmPairs * 2;i++) 
+	{
 		int result = r.nextInt(numPms-0) + 0;
-		list.add(result);
-
+		if(result != prevresult)
+		{
+			list.add(result);
+		}
+		prevresult = result;
 		if( Collections.frequency(list, result) > resCap ) {
 			result = r.nextInt(numPms-0) + 0;
 			list.set(i, result);

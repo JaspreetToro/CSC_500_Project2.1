@@ -13,7 +13,8 @@ public class MCFGenerator {
 	lambda: the communication frequency of each VM pair is a random number between [0, lambda]
 	mu: migration coefficient
 	*/
-	public static void GenerateFile(HashMap<Integer, List<Integer>> topoMap, int minCost) {	
+	public static void GenerateFile(HashMap<Integer, List<Integer>> topoMap, int minCost)
+	{	
 		
 	}
 }
