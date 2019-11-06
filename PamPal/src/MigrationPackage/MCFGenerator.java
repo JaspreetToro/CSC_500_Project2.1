@@ -19,8 +19,10 @@ public class MCFGenerator {
 
 		try {
 
-			int numNodes = topoMap.size();
-			int arcs = numNodes * 15;
+			int numVMs = topoMap.size();
+			int numPms = (int)(Math.pow(k, 3)/4);
+			int numNodes = numVMs + numPms + 2;
+			int arcs = numVMs * 15;
 			int supply = 10;
 
 			FileOutputStream outputStream = new FileOutputStream(path + "sample.inp");
