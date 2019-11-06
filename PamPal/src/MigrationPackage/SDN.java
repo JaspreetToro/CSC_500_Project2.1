@@ -43,25 +43,24 @@ public class SDN {
 		}		
 		inputs[0] = input;
 
-		PodMap = CreatePodMap(inputs[0]);
-		TopoMap = CreateTopology(inputs[0]);
+		//PodMap = CreatePodMap(inputs[0]);
+		//TopoMap = CreateTopology(inputs[0]);
+		//PrintMap(PodMap, true);
+		//PrintMap(TopoMap, false);	
 
-		PrintMap(PodMap, true);
-		PrintMap(TopoMap, false);	
+		int numPms = (int)(Math.pow(inputs[0], 3)/4);
 
-		int total = (int) (((5 * Math.pow(inputs[0], 2))+(Math.pow(inputs[0], 3)))/4);
+		// input for rc
+		System.out.println("Please enter the initial capacity of each PM.");
+		inputs[1] = in.nextInt();	
 
 		// input for l
-		System.out.println("Please enter the number of VM pairs randomly placed. For example 1 = 2 VMs. \nMust be between 1 and " + total/2);
-		inputs[1] = in.nextInt();	
+		System.out.println("Please enter the number of VM pairs randomly placed. For example 1 = 2 VMs. \nMust be between 1 and " + numPms*inputs[1]);
+		inputs[2] = in.nextInt();	
 
 		// input for m
 		System.out.println("Please enter the number of middleboxes in the data center.");
-		inputs[2] = in.nextInt();	
-		
-		// input for rc
-		System.out.println("Please enter the initial capacity of each PM.");
-		inputs[3] = in.nextInt();	
+		inputs[3] = in.nextInt();		
 
 		// input for lambda
 		System.out.println("Please enter the communication frequency of each VM pair is a random number between [0, lambda].");
