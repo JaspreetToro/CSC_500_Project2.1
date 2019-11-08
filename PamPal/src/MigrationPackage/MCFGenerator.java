@@ -1,9 +1,7 @@
 package MigrationPackage;
 
-import java.util.HashMap;
 import java.io.*;
 import java.util.List;
-import java.util.Map;
 
 public class MCFGenerator {
 
@@ -15,23 +13,22 @@ public class MCFGenerator {
 	lambda: the communication frequency of each VM pair is a random number between [0, lambda]
 	mu: migration coefficient
 	 */
-	public static void GenerateFile(HashMap<Integer, List<Integer>> topoMap, int k,String path) {
+	public static void GenerateFile(List<Node> nodes, int k,int numVMs, String path) {
 
 		try {
 
-			int numVMs = topoMap.size();
 			int numPms = (int)(Math.pow(k, 3)/4);
-			int numNodes = numVMs + numPms + 2;
-			int arcs = numVMs * 15;
-			int supply = 10;
+			int totalNodes = numVMs + numPms + 2;//6 + 16 
+			int arcs = (numVMs * numPms) + numVMs + numPms;//edges and arcs
+			int supply = numVMs;
 
 			FileOutputStream outputStream = new FileOutputStream(path + "sample.inp");
-			String fileContent1 = "p min " + numNodes + " " + arcs + " \r\n";	
-			String fileContent2 = "c min-cost flow problem with " + numNodes + " nodes and " + arcs + " arcs\r\n";
-			String fileContent3 = "n 1 " + supply + "\r\n";
-			String fileContent4 = "c supply of " + supply + " at node 1\r\n";
-			String fileContent5 = "n " + numNodes + " -" + supply + "\r\n";
-			String fileContent6 = "c demand of " + supply + " at node " + numNodes + "\r\n";
+			String fileContent1 = "p min " + totalNodes + " " + arcs + " \r\n";	
+			String fileContent2 = "c min-cost flow problem with " + totalNodes + " nodes and " + arcs + " arcs\r\n";
+			String fileContent3 = "n 0 " + supply + "\r\n";
+			String fileContent4 = "c supply of " + supply + " at node 0\r\n";
+			String fileContent5 = "n " + (totalNodes-1) + " -" + supply + "\r\n";
+			String fileContent6 = "c demand of " + supply + " at node " + (totalNodes-1) + "\r\n";
 			String fileContent7 = "c arc list follows\r\n";
 			String fileContent8 = "c arc has <tail> <head> <capacity l.b.> <capacity u.b> <cost>\r\n";	    
 
@@ -53,26 +50,53 @@ public class MCFGenerator {
 			outputStream.write(strToBytes7);
 			outputStream.write(strToBytes8);
 
-			String temp;
-			int vmIndex = 0 ;
-			int j = 0;
-			for(Map.Entry<Integer, List<Integer>> entry : topoMap.entrySet()) {
-				for(int i = 0; i < entry.getValue().size(); i++) {
-					
-					if(vmIndex == entry.getKey()) {
-						vmIndex++;
-					}
 
-					int n = entry.getValue().get(j);
-					temp = "a" + " " + entry.getKey() + " " + vmIndex + " " + "0" + " " + SDN.ShorestDistance(k, entry.getKey(), vmIndex)+ " " + n + "\r\n";
-					byte[] tempBytes = temp.getBytes();
-					outputStream.write(tempBytes);
-					vmIndex++;
-					j++;
-				}
-				j=0;
-				vmIndex=0;
+			//			c arc has <tail> <head> <capacity l.b.> <capacity u.b> <cost>
+			//			a 1 2 0 4  1
+			
+			//lines that involve source node
+			for(int i = 1; i <= numVMs;i++) {//vms = 4 , 4 lines
+				String s = "a" + " " + nodes.get(0).NodeID + " " + i + " " + "0" + " " + "1" + " " + "1" + "\r\n";
+				byte[] sBytes = s.getBytes();
+				outputStream.write(sBytes);
 			}
+			
+			//lines from each vm to each pm
+			int pmIndex = numVMs+1;
+			int listIndex = 0;
+			for(int i = 1; i <= numVMs;i++) {//k = 4;vms =4, 64 lines
+				for(int j = pmIndex;j < pmIndex+numPms;j++) {
+					String s = "a" + " " + nodes.get(i).NodeID + " " + j + " " + "0" + " " + "1" + " " + nodes.get(i).VMM.PossibleCosts.get(listIndex) + "\r\n";
+					byte[] sBytes = s.getBytes();
+					outputStream.write(sBytes);
+					listIndex++;
+				}
+				listIndex = 0;
+			}
+			
+			//lines from each pm to endNode
+			for(int i = pmIndex; i < numPms+pmIndex;i++) {//k=4, lines = 16
+				String s = "a" + " " + i + " " + (totalNodes-1) + " " + "0" + " " + supply + " " + "1" + "\r\n";
+				byte[] sBytes = s.getBytes();
+				outputStream.write(sBytes);
+			}
+
+			//			String temp;
+			//			int vmIndex = 0 ;
+			//			int j = 0;
+			//			for(Map.Entry<Integer, List<Integer>> entry : topoMap.entrySet()) {
+			//				for(int i = 0; i < entry.getValue().size(); i++) {
+			//
+			//					int n = entry.getValue().get(j);
+			//					temp = "a" + " " + entry.getKey() + " " + vmIndex + " " + "0" + " " + SDN.ShorestDistance(k, entry.getKey(), vmIndex)+ " " + n + "\r\n";
+			//					byte[] tempBytes = temp.getBytes();
+			//					outputStream.write(tempBytes);
+			//					vmIndex++;
+			//					j++;
+			//				}
+			//				j=0;
+			//				vmIndex=0;
+			//			}
 
 			outputStream.close();
 		}catch(Exception e){
