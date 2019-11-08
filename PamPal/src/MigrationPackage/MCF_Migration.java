@@ -1,7 +1,6 @@
 package MigrationPackage;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 import java.io.*;
@@ -15,11 +14,12 @@ public class MCF_Migration {
 	public static int edgeStart;									
 	public static int edgeEnd;							
 	public static int aggStart;
-	static HashMap<Integer, List<Integer>> topoMap = new HashMap<Integer, List<Integer>>();
+	//static HashMap<Integer, List<Integer>> topoMap = new HashMap<Integer, List<Integer>>();
 	public static int mbDistance;
-	public static int firstMB;
+	public static int firstMB; 
 	public static int lastMB;
 	public static int migration;
+	public static List<Node> Nodes = new ArrayList<Node>();;
 
 
 	@SuppressWarnings("unused")
@@ -29,10 +29,13 @@ public class MCF_Migration {
 		//k,rc,vmpairs,mbs,frequency,migration
 		int[] inputs = SDN.GetInput();
 
+		Node nodeZero = new Node(0,1,null);
+		Nodes.add(nodeZero);
+		
 		String path = "C:/Users/angel/Desktop/";
 		//Set up for testing
 		//SetUpMinCost(4,4,2,2,2,1);
-		
+
 		//generate mcf_migration.inp file
 		SetUpMinCost(inputs[0],inputs[1],inputs[2],inputs[3],inputs[4],inputs[5], path);
 	}
@@ -55,49 +58,69 @@ public class MCF_Migration {
 		List<Integer> frequencies = GetFrequencies(vmPairs, frequency);
 
 		migCost(vmPairLocation, frequencies);
+		CreatePmNodes(vmPairLocation.size());
 
 		PrintParameters(numPods, resCap,vmPairLocation,MBsLocation,frequencies,migCoe,path);
 		//generate mcf_migration.inp file	
-		MCFGenerator.GenerateFile(topoMap, k,path);
+		
+		Node endNode = new Node();
+		endNode.NodeID = vmPairLocation.size() + numPms + 1;
+		endNode.Cost = -1;
+		endNode.VMM = null;
+		Nodes.add(endNode);
+		
+		MCFGenerator.GenerateFile(Nodes, k, vmPairs*2,path);
+	}
+
+	private static void CreatePmNodes(int numVM) {
+	
+		int NodeIndex = numVM +1;
+		for(int i = 1; i <= numPms;i++) {
+			Node tempNode = new Node();
+			tempNode.NodeID = NodeIndex +  i;
+			tempNode.Cost = 1;
+			tempNode.VMM = null;
+		}
+		
 	}
 
 	private static void PrintParameters(int numPods, int resCap, List<Integer> vmPairLocation,
 			List<Integer> mBsLocation, List<Integer> frequencies, int migCoe,String path) {
 		FileOutputStream outputStream;
 		try {
-			
+
 			outputStream = new FileOutputStream(path + "Parameters.txt");
-			
+
 			//k
 			String k = "k = " + numPods+ "\r\n";
 			byte[] kBytes = k.getBytes();
 			outputStream.write(kBytes);
-			
+
 			//resCap
 			String rc = "ResCap = " + resCap+ "\r\n";
 			byte[] rcBytes = rc.getBytes();
 			outputStream.write(rcBytes);
-			
+
 			//vms
 			String vm = "VM Locations: " + vmPairLocation.toString()+ "\r\n";
 			byte[] vmBytes = vm.getBytes();
 			outputStream.write(vmBytes);
-			
+
 			//mbs
 			String mb = "MB Locations: " + mBsLocation.toString()+ "\r\n";
 			byte[] mbBytes = mb.getBytes();
 			outputStream.write(mbBytes);
-			
+
 			//f
 			String f = "Frequencies: " + frequencies.toString()+ "\r\n";
 			byte[] fBytes = f.getBytes();
 			outputStream.write(fBytes);
-			
+
 			//migCoe
 			String mc = "Migration Coeficient = " + migCoe+ "\r\n";
 			byte[] mcBytes = mc.getBytes();
 			outputStream.write(mcBytes);
-			
+
 			outputStream.close();
 		}catch(Exception e){
 			System.out.println("IOException has been thrown.\n" + e.getMessage() );
@@ -118,7 +141,17 @@ public class MCF_Migration {
 				j=i-1;
 			}
 			freIndex = (int)Math.floor((i/2));
-			topoMap.put(vmPair.get(i), GetCostAllPosiblePmLocs( frequencies.get(freIndex) , vmPair.get(i), vmPair.get(j)));
+			
+			VmMigration tempVmm = new VmMigration();
+			tempVmm.VmSource = vmPair.get(i);
+			tempVmm.VmEnd = vmPair.get(j);
+			tempVmm.PossibleCosts = GetCostAllPosiblePmLocs( frequencies.get(freIndex) , vmPair.get(i), vmPair.get(j));
+			tempVmm.Frequency = frequencies.get(freIndex);
+			tempVmm.MigrationCost = migration;
+			
+			Nodes.add(new Node(i+1,1,tempVmm));
+			
+			//topoMap.put(vmPair.get(i), GetCostAllPosiblePmLocs( frequencies.get(freIndex) , vmPair.get(i), vmPair.get(j)));
 		}
 		return;
 	}
@@ -128,9 +161,7 @@ public class MCF_Migration {
 		List<Integer> list = new ArrayList<Integer>();
 
 		for(int i = 0; i< numPms; i++){ //loop through all possible migration locations of vm
-			if(i != vmI) {//cannot migrate to its own location
-				list.add(GetTotalCost(vmI,i,fre,vmJ));
-			}
+			list.add(GetTotalCost(vmI,i,fre,vmJ));
 		}
 		return list;
 	}
@@ -237,10 +268,10 @@ public class MCF_Migration {
 				}
 			}
 
-//			if( Collections.frequency(list, result) > resCap ) {
-//				result = r.nextInt(numPms-0) + 0;
-//				list.set(i, result);
-//			}
+			//			if( Collections.frequency(list, result) > resCap ) {
+			//				result = r.nextInt(numPms-0) + 0;
+			//				list.set(i, result);
+			//			}
 		}
 
 		return list;
