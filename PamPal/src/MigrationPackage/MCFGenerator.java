@@ -56,7 +56,7 @@ public class MCFGenerator {
 			
 			//lines that involve source node
 			for(int i = 1; i <= numVMs;i++) {//vms = 4 , 4 lines
-				String s = "a" + " " + nodes.get(0).NodeID + " " + i + " " + "0" + " " + "1" + " " + "1" + "\r\n";
+				String s = "a" + " " + nodes.get(0).NodeID + " " + i + " " + "0" + " " + "1" + " " + "0" + "\r\n";
 				byte[] sBytes = s.getBytes();
 				outputStream.write(sBytes);
 			}
@@ -76,7 +76,7 @@ public class MCFGenerator {
 			
 			//lines from each pm to endNode
 			for(int i = pmIndex; i < numPms+pmIndex;i++) {//k=4, lines = 16
-				String s = "a" + " " + i + " " + (totalNodes-1) + " " + "0" + " " + supply + " " + "1" + "\r\n";
+				String s = "a" + " " + i + " " + (totalNodes-1) + " " + "0" + " " + supply + " " + "0" + "\r\n";
 				byte[] sBytes = s.getBytes();
 				outputStream.write(sBytes);
 			}
