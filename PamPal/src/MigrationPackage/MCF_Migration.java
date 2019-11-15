@@ -69,7 +69,7 @@ public class MCF_Migration {
 		endNode.VMM = null;
 		Nodes.add(endNode);
 		
-		MCFGenerator.GenerateFile(Nodes, k, vmPairs*2,path);
+		MCFGenerator.GenerateFile(Nodes, k, vmPairs*2,path,resCap);
 	}
 
 	private static void CreatePmNodes(int numVM) {
@@ -261,7 +261,7 @@ public class MCF_Migration {
 			proceed = true;
 			while(proceed) {	
 				int result = r.nextInt(numPms-0) + 0;
-				if(Collections.frequency(list, result) == 0 )
+				if(Collections.frequency(list, result) <= resCap )
 				{
 					list.add(result);
 					proceed = false;

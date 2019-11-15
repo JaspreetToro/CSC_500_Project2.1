@@ -13,14 +13,14 @@ public class MCFGenerator {
 	lambda: the communication frequency of each VM pair is a random number between [0, lambda]
 	mu: migration coefficient
 	 */
-	public static void GenerateFile(List<Node> nodes, int k,int numVMs, String path) {
+	public static void GenerateFile(List<Node> nodes, int k,int numVMs, String path,int r) {
 
 		try {
 
 			int numPms = (int)(Math.pow(k, 3)/4);
 			int totalNodes = numVMs + numPms + 2;//6 + 16 
 			int arcs = (numVMs * numPms) + numVMs + numPms;//edges and arcs
-			int supply = numVMs;
+			int supply = r;
 
 			FileOutputStream outputStream = new FileOutputStream(path + "sample.inp");
 			String fileContent1 = "p min " + totalNodes + " " + arcs + " \r\n";	
