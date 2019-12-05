@@ -1,10 +1,8 @@
-package MigrationPackage;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
+import java.io.*;
 
 public class MCF_Migration {
 
@@ -15,30 +13,34 @@ public class MCF_Migration {
 	public static int edgeStart;									
 	public static int edgeEnd;							
 	public static int aggStart;
-	static HashMap<Integer, List<Integer>> topoMap = new HashMap<Integer, List<Integer>>();
+	//static HashMap<Integer, List<Integer>> topoMap = new HashMap<Integer, List<Integer>>();
 	public static int mbDistance;
-	public static int firstMB;
+	public static int firstMB; 
 	public static int lastMB;
 	public static int migration;
+	public static List<Node> Nodes = new ArrayList<Node>();;
+
 
 	@SuppressWarnings("unused")
-	public static void main(String[] args) 
-	{
+	public static void main(String[] args) {
+
+		//call other class to begin generating the file. Pass over user input.
+		//k,rc,vmpairs,mbs,frequency,migration
+		int[] inputs = SDN.GetInput();
+
+		Node nodeZero = new Node(0,1,null);
+		Nodes.add(nodeZero);
+		
+		String path = "";
+		//Set up for testing
+		//SetUpMinCost(4,4,2,2,2,1);
 
 		//generate mcf_migration.inp file
-		//call other class to begin generating the file. Pass over user input.
-		//int[] inputs = SDN.GetInput();
-
-		//							   k, j, i
-		//int temp = SDN.ShorestDistance(0, 1, 2);	
-
-		//Set up for testing
-		SetUpMinCost(4,2,2,4,2,1);
+		SetUpMinCost(inputs[0],inputs[1],inputs[2],inputs[3],inputs[4],inputs[5], path);
 	}
 
-
 	//									4,2,2,4,2,1
-	public static void SetUpMinCost(int numPods, int vmPairs,int boxes, int resCap,int frequency,int migCoe) {
+	public static void SetUpMinCost(int numPods,int resCap, int vmPairs,int boxes, int frequency,int migCoe, String path) {
 
 		k = numPods;
 		migration = migCoe;
@@ -53,154 +55,239 @@ public class MCF_Migration {
 		List<Integer> MBsLocation = MBsLocation(boxes);
 		mbDistance = MBDistance(MBsLocation);
 		List<Integer> frequencies = GetFrequencies(vmPairs, frequency);
-		
-		migCost(vmPairLocation, frequencies);
-		
-//		List<Integer> l = new ArrayList<Integer>(Arrays.asList(vmPairLocation.get(0),vmPairLocation.get(1)));
-//
-//		int n = GeneralCost(l);
-//		int r = n * frequencies.get(0);
 
-		//generate mcf_migration.inp file
-		MCFGenerator.GenerateFile(topoMap, k);
+		migCost(vmPairLocation, frequencies);
+		CreatePmNodes(vmPairLocation.size());
+
+		PrintParameters(numPods, resCap,vmPairLocation,MBsLocation,frequencies,migCoe,path);
+		//generate mcf_migration.inp file	
+		
+		Node endNode = new Node();
+		endNode.NodeID = vmPairLocation.size() + numPms + 1;
+		endNode.Cost = -1;
+		endNode.VMM = null;
+		Nodes.add(endNode);
+		
+		MCFGenerator.GenerateFile(Nodes, k, vmPairs*2,path,resCap);
+	}
+
+	private static void CreatePmNodes(int numVM) {
+	
+		int NodeIndex = numVM +1;
+		for(int i = 1; i <= numPms;i++) {
+			Node tempNode = new Node();
+			tempNode.NodeID = NodeIndex +  i;
+			tempNode.Cost = 1;
+			tempNode.VMM = null;
+		}
+		
+	}
+
+	private static void PrintParameters(int numPods, int resCap, List<Integer> vmPairLocation,
+			List<Integer> mBsLocation, List<Integer> frequencies, int migCoe,String path) {
+		FileOutputStream outputStream;
+		try {
+
+			outputStream = new FileOutputStream(path + "Parameters.txt");
+
+			//k
+			String k = "k = " + numPods+ "\r\n";
+			byte[] kBytes = k.getBytes();
+			outputStream.write(kBytes);
+
+			//resCap
+			String rc = "ResCap = " + resCap+ "\r\n";
+			byte[] rcBytes = rc.getBytes();
+			outputStream.write(rcBytes);
+
+			//vms
+			String vm = "VM Locations: " + vmPairLocation.toString()+ "\r\n";
+			byte[] vmBytes = vm.getBytes();
+			outputStream.write(vmBytes);
+
+			//mbs
+			String mb = "MB Locations: " + mBsLocation.toString()+ "\r\n";
+			byte[] mbBytes = mb.getBytes();
+			outputStream.write(mbBytes);
+
+			//f
+			String f = "Frequencies: " + frequencies.toString()+ "\r\n";
+			byte[] fBytes = f.getBytes();
+			outputStream.write(fBytes);
+
+			//migCoe
+			String mc = "Migration Coeficient = " + migCoe+ "\r\n";
+			byte[] mcBytes = mc.getBytes();
+			outputStream.write(mcBytes);
+
+			outputStream.close();
+		}catch(Exception e){
+			System.out.println("IOException has been thrown.\n" + e.getMessage() );
+		}	
 	}
 
 	private static void migCost(List<Integer> vmPair,List<Integer> frequencies)
 	{
 		//we need to figure out which frequency needs to be sent over.
-		
+
 		int freIndex = 0;
 		int j;
 		for(int i = 0; i< vmPair.size(); i++) {//loop through all vms.
+			
+			freIndex = (int)Math.floor((i/2));
+			
+			VmMigration tempVmm = new VmMigration();
+			tempVmm.VmSource = vmPair.get(i);
 			if(i%2== 0) {
 				j =i+1;
+				tempVmm.IsVmSource = true;
 			}
 			else {
 				j=i-1;
+				tempVmm.IsVmSource = false;
 			}
-			freIndex = (int)Math.floor((i/2));
-			topoMap.put(vmPair.get(i), GetCostAllPosiblePmLocs( frequencies.get(freIndex) , vmPair.get(i), vmPair.get(j)));
+			tempVmm.VmEnd = vmPair.get(j);
+			tempVmm.PossibleCosts = GetCostAllPosiblePmLocs( frequencies.get(freIndex) , vmPair.get(i), vmPair.get(j), tempVmm.IsVmSource);
+			tempVmm.Frequency = frequencies.get(freIndex);
+			tempVmm.MigrationCost = migration;
+			
+			Nodes.add(new Node(i+1,1,tempVmm));
+			
+			//topoMap.put(vmPair.get(i), GetCostAllPosiblePmLocs( frequencies.get(freIndex) , vmPair.get(i), vmPair.get(j)));
 		}
 		return;
 	}
 
-private static List<Integer> GetCostAllPosiblePmLocs(int fre, int vmI,int vmJ) {//gets the cost for all possible new vm locations.
+	private static List<Integer> GetCostAllPosiblePmLocs(int fre, int vmI,int vmJ,boolean isVmSource) {//gets the cost for all possible new vm locations.
 
-	List<Integer> list = new ArrayList<Integer>();
+		List<Integer> list = new ArrayList<Integer>();
 
-	for(int i = 0; i< numPms; i++){ //loop through all possible migration locations of vm
-		if(i != vmI) {//cannot migrate to its own location
-			list.add(GetTotalCost(vmI,i,fre,vmJ));
+		for(int i = 0; i< numPms; i++){ //loop through all possible migration locations of vm
+			if (isVmSource) {
+				list.add(GetTotalCostSource(vmI,i,fre,vmJ));
+			}
+			else{
+				list.add(GetTotalCostEnd(vmI,i,fre,vmJ));
+			}		
 		}
-	}
-	return list;
-}
-
-
-private static Integer GetTotalCost(int vm1, int vm2,int fre,int vmJ) 
-{
-	int temp = CommCost(vm1,vm2,fre);
-	int temp1= MigCost(vm2,vmJ);
-	return  temp + temp1 ;
-}
-
-
-private static int MigCost(int vm1, int vm2) {
-
-	return migration*SDN.ShorestDistance(k, vm1, vm2);
-}
-
-private static int CommCost(int fisrtVM, int secondVm,int fre) {
-
-	int temp = SDN.ShorestDistance(k, fisrtVM,firstMB );
-	int temp2 = SDN.ShorestDistance(k, secondVm,lastMB );
-
-	return (temp+temp2+ mbDistance)*fre;
-}
-
-private static int MBDistance(List<Integer> mb) {
-	int temp=0;
-
-	for(int i =0; i < mb.size()-1;i++) {
-		temp += SDN.ShorestDistance(k, mb.get(i),mb.get(i+1) );
+		return list;
 	}
 
-	firstMB = mb.get(0);
-	lastMB = mb.get(mb.size()-1);
 
-	return temp;
-}
-
-private static int GeneralCost(List<Integer> vmPair) {
-
-	int temp = SDN.ShorestDistance(k, vmPair.get(0),firstMB );
-	int temp2 = SDN.ShorestDistance(k, vmPair.get(1),lastMB );
-
-	return temp+temp2;
-}
-
-private static List<Integer> GetFrequencies(int vmPairs, int frequency) {
-
-	List<Integer> list = new ArrayList<Integer>();
-
-	Random r = new Random();
-
-	for(int i = 0;i < vmPairs;i++) {
-
-		int result = r.nextInt(frequency-1) + 1;
-		list.add(result);
-	}
-	return list;
-}
-
-private static List<Integer> MBsLocation( int boxes) {
-	//number of each nodes   				//if 	k = 2		k=4
-	int numPms = (int)(Math.pow(k, 3)/4);	//		2 			16										
-	int numEdges = (int)(Math.pow(k, 2)/2);	// 		2			8
-	int numAggs = (int)(Math.pow(k, 2)/2);  //		2			8
-
-	//start and end points of each type of node   						//if k = 2		k=4
-	int edgeStart = numPms;												// 2			16
-	int edgeEnd = numPms + numEdges -1;									// 3			23
-	int aggStart = edgeEnd +1;											// 4			24
-	int aggEnd = aggStart + numAggs -1;									// 5			31
-
-
-	List<Integer> list = new ArrayList<Integer>();
-
-	Random r = new Random();
-
-	for(int i = 0;i < boxes;i++) {
-
-		int result = r.nextInt(aggEnd-edgeStart) + edgeStart;
-		list.add(result);
-	}
-
-	return list;
-}
-
-private static List<Integer> VMPairsLocation(int vmPairs,int resCap)
-{
-
-	int numPms = (int)Math.pow(k, 3)/4;
-	List<Integer> list = new ArrayList<Integer>();
-
-	Random r = new Random();
-	int prevresult;
-	for(int i = 0;i < vmPairs * 2;i++) 
+	private static Integer GetTotalCostSource(int vm1, int pm2,int fre,int vmJ) 
 	{
-		int result = r.nextInt(numPms-0) + 0;
-		if(result != prevresult)
-		{
+		int temp = CommCost(vm1,vm2,fre);
+		int temp1= MigCost(vm2,vmJ);
+		return  temp + temp1 ;
+	}
+
+	private static Integer GetTotalCostEnd(int vm1, int vm2,int fre,int vmJ) 
+	{
+		int temp = CommCost(vm1,vm2,fre);
+		int temp1= MigCost(vm2,vmJ);
+		return  temp + temp1 ;
+	}
+
+
+	private static int MigCost(int vm1, int vm2) {
+
+		return migration*SDN.ShorestDistance(k, vm1, vm2);
+	}
+
+	private static int CommCost(int fisrtVM, int secondVm,int fre) {
+
+		int temp = SDN.ShorestDistance(k, fisrtVM,firstMB );
+		int temp2 = SDN.ShorestDistance(k, secondVm,lastMB );
+
+		return (temp+temp2+ mbDistance)*fre;
+	}
+
+	private static int MBDistance(List<Integer> mb) {
+		int temp=0;
+
+		for(int i =0; i < mb.size()-1;i++) {
+			temp += SDN.ShorestDistance(k, mb.get(i),mb.get(i+1) );
+		}
+
+		firstMB = mb.get(0);
+		lastMB = mb.get(mb.size()-1);
+
+		return temp;
+	}
+
+	@SuppressWarnings("unused")
+	private static int GeneralCost(List<Integer> vmPair) {
+
+		int temp = SDN.ShorestDistance(k, vmPair.get(0),firstMB );
+		int temp2 = SDN.ShorestDistance(k, vmPair.get(1),lastMB );
+
+		return temp+temp2;
+	}
+
+	private static List<Integer> GetFrequencies(int vmPairs, int frequency) {
+
+		List<Integer> list = new ArrayList<Integer>();
+
+		Random r = new Random();
+
+		for(int i = 0;i < vmPairs;i++) {
+
+			int result = r.nextInt(frequency-1) + 1;
 			list.add(result);
 		}
-		prevresult = result;
-		if( Collections.frequency(list, result) > resCap ) {
-			result = r.nextInt(numPms-0) + 0;
-			list.set(i, result);
-		}
+		return list;
 	}
 
-	return list;
-}
+	private static List<Integer> MBsLocation( int boxes) {
+		//number of each nodes   				//if 	k = 2		k=4
+		int numPms = (int)(Math.pow(k, 3)/4);	//		2 			16										
+		int numEdges = (int)(Math.pow(k, 2)/2);	// 		2			8
+		int numAggs = (int)(Math.pow(k, 2)/2);  //		2			8
+
+		//start and end points of each type of node   						//if k = 2		k=4
+		int edgeStart = numPms;												// 2			16
+		int edgeEnd = numPms + numEdges -1;									// 3			23
+		int aggStart = edgeEnd +1;											// 4			24
+		int aggEnd = aggStart + numAggs -1;									// 5			31
+
+
+		List<Integer> list = new ArrayList<Integer>();
+
+		Random r = new Random();
+
+		for(int i = 0;i < boxes;i++) {
+
+			int result = r.nextInt(aggEnd-edgeStart) + edgeStart;
+			list.add(result);
+		}
+
+		return list;
+	}
+
+	private static List<Integer> VMPairsLocation(int vmPairs,int resCap){
+
+		int numPms = (int)Math.pow(k, 3)/4;
+		List<Integer> list = new ArrayList<Integer>();
+		boolean proceed = true;
+		Random r = new Random();
+
+		for(int i = 0;i < vmPairs * 2;i++) {
+			proceed = true;
+			while(proceed) {	
+				int result = r.nextInt(numPms-0) + 0;
+				if(Collections.frequency(list, result) <= resCap )
+				{
+					list.add(result);
+					proceed = false;
+				}
+			}
+
+			//			if( Collections.frequency(list, result) > resCap ) {
+			//				result = r.nextInt(numPms-0) + 0;
+			//				list.set(i, result);
+			//			}
+		}
+
+		return list;
+	}
 }
