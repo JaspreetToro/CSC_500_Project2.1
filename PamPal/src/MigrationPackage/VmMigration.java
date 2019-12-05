@@ -1,5 +1,4 @@
 package MigrationPackage;
-
 import java.util.List;
 
 public class VmMigration {
@@ -9,17 +8,29 @@ public class VmMigration {
 	List<Integer> PossibleCosts;//nodes that represent each PM
 	int Frequency;
 	int MigrationCost;
+	boolean IsSourceVm;
 	
-	public VmMigration(int vms, int vme,List<Integer> pc, int f, int mc) {
+	public VmMigration(int vms, int vme,List<Integer> pc, int f, int mc, boolean isv) {
 		this.VmSource = vms;
 		this.VmEnd = vme;
 		this.PossibleCosts = pc;
 		this.Frequency = f;
 		this.MigrationCost = mc;
+		this.IsSourceVm = isv;
 	}
 	public VmMigration() {
 		// TODO Auto-generated constructor stub
 	}
+
+	//get set issourcevm
+	public boolean getIsVmSource() {
+		return IsSourceVm;
+	}
+
+	public void setIsVmSource(boolean isSourceVm) {
+		IsSourceVm = isSourceVm;
+	}
+
 	//get set vmsource
 	public int getVmSource() {
 		return VmSource;

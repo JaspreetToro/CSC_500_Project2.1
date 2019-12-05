@@ -31,13 +31,14 @@ public class MCF_Migration {
 
 		Node nodeZero = new Node(0,1,null);
 		Nodes.add(nodeZero);
-		
-		String path = "C:/Users/angel/Desktop/";
+
+		String path = "";
 		//Set up for testing
 		//SetUpMinCost(4,4,2,2,2,1);
 
 		//generate mcf_migration.inp file
 		SetUpMinCost(inputs[0],inputs[1],inputs[2],inputs[3],inputs[4],inputs[5], path);
+		k = 0;
 	}
 
 	//									4,2,2,4,2,1
@@ -62,18 +63,19 @@ public class MCF_Migration {
 
 		PrintParameters(numPods, resCap,vmPairLocation,MBsLocation,frequencies,migCoe,path);
 		//generate mcf_migration.inp file	
-		
+
 		Node endNode = new Node();
 		endNode.NodeID = vmPairLocation.size() + numPms + 1;
 		endNode.Cost = -1;
 		endNode.VMM = null;
 		Nodes.add(endNode);
-		
+
 		MCFGenerator.GenerateFile(Nodes, k, vmPairs*2,path,resCap);
+		
 	}
 
 	private static void CreatePmNodes(int numVM) {
-	
+
 		int NodeIndex = numVM +1;
 		for(int i = 1; i <= numPms;i++) {
 			Node tempNode = new Node();
@@ -81,7 +83,7 @@ public class MCF_Migration {
 			tempNode.Cost = 1;
 			tempNode.VMM = null;
 		}
-		
+
 	}
 
 	private static void PrintParameters(int numPods, int resCap, List<Integer> vmPairLocation,
@@ -133,59 +135,109 @@ public class MCF_Migration {
 
 		int freIndex = 0;
 		int j;
+		boolean firstOrLast = true; // print out the first which is sourceVm and the last which is primeVm
 		for(int i = 0; i< vmPair.size(); i++) {//loop through all vms.
+
+			if(i == vmPair.size()-1)
+				firstOrLast = true;
+			freIndex = (int)Math.floor((i/2));
+
+			VmMigration tempVmm = new VmMigration();
+			tempVmm.VmSource = vmPair.get(i);
 			if(i%2== 0) {
 				j =i+1;
+				tempVmm.IsSourceVm= true;
 			}
 			else {
 				j=i-1;
+				tempVmm.IsSourceVm = false;
 			}
-			freIndex = (int)Math.floor((i/2));
-			
-			VmMigration tempVmm = new VmMigration();
-			tempVmm.VmSource = vmPair.get(i);
 			tempVmm.VmEnd = vmPair.get(j);
-			tempVmm.PossibleCosts = GetCostAllPosiblePmLocs( frequencies.get(freIndex) , vmPair.get(i), vmPair.get(j));
+			tempVmm.PossibleCosts = GetCostAllPosiblePmLocs( frequencies.get(freIndex) , vmPair.get(i),
+					vmPair.get(j), tempVmm.IsSourceVm ,firstOrLast);
 			tempVmm.Frequency = frequencies.get(freIndex);
 			tempVmm.MigrationCost = migration;
-			
+
+			firstOrLast = false;
 			Nodes.add(new Node(i+1,1,tempVmm));
-			
-			//topoMap.put(vmPair.get(i), GetCostAllPosiblePmLocs( frequencies.get(freIndex) , vmPair.get(i), vmPair.get(j)));
+
 		}
 		return;
 	}
 
-	private static List<Integer> GetCostAllPosiblePmLocs(int fre, int vmI,int vmJ) {//gets the cost for all possible new vm locations.
+	private static List<Integer> GetCostAllPosiblePmLocs(int fre, int vmI,int vmJ,boolean isSourceVm,boolean fol) {//gets the cost for all possible new vm locations.
 
 		List<Integer> list = new ArrayList<Integer>();
+		int total = 0;
 
 		for(int i = 0; i< numPms; i++){ //loop through all possible migration locations of vm
-			list.add(GetTotalCost(vmI,i,fre,vmJ));
+			if(i == 1) {
+				fol = false;
+			}
+			if (isSourceVm) {
+				total = GetTotalCostSource(vmI,i,fre,vmJ,fol);
+				if(fol)
+					System.out.println("Total Cost = " + total);	
+				list.add(total);
+			}
+			else{
+				total = GetTotalCostEnd(vmI,i,fre,vmJ,fol);
+				if(fol)
+					System.out.println("Total Cost = " + total);	
+				list.add(total);
+			}		
 		}
 		return list;
 	}
 
 
-	private static Integer GetTotalCost(int vm1, int vm2,int fre,int vmJ) 
+	private static Integer GetTotalCostSource(int vm, int pm,int fre,int vmJ,boolean fol) 
 	{
-		int temp = CommCost(vm1,vm2,fre);
-		int temp1= MigCost(vm2,vmJ);
+		int temp1= MigCost(vm,pm);
+		int temp = CommCost(firstMB,pm,fre);
+		if(fol) {
+			System.out.println("----------Source Vm-------------");	
+			System.out.println("Migration Cost = " + temp1);	
+			System.out.println("Vm = " + vm);	
+			System.out.println("Pm = " + pm);
+			System.out.println("Migration Coe = " + migration);
+			System.out.println("Communication Cost = " + temp);	
+			System.out.println("Mb = " + firstMB);	
+			System.out.println("Pm = " + pm);
+			System.out.println("Frequecny = " + fre);
+		}
+		return  temp + temp1 ;
+	}
+
+	private static Integer GetTotalCostEnd(int vm, int pm,int fre,int vmJ,boolean fol) 
+	{
+		int temp1= MigCost(vm,pm);
+		int temp = CommCost(lastMB,pm,fre);
+		if(fol) {
+			System.out.println("----------End Vm-------------");	
+			System.out.println("Migration Cost = " + temp1);	
+			System.out.println("Vm = " + vm);	
+			System.out.println("Pm = " + pm);
+			System.out.println("Migration Coe = " + migration);
+			System.out.println("Communication Cost = " + temp);	
+			System.out.println("Mb = " + lastMB);	
+			System.out.println("Pm = " + pm);
+			System.out.println("Frequecny = " + fre);
+		}
 		return  temp + temp1 ;
 	}
 
 
-	private static int MigCost(int vm1, int vm2) {
+	private static int MigCost(int vm, int pm) {
 
-		return migration*SDN.ShorestDistance(k, vm1, vm2);
+		return migration*SDN.ShorestDistance(k, vm, pm);
 	}
 
-	private static int CommCost(int fisrtVM, int secondVm,int fre) {
+	private static int CommCost(int mb, int pm,int fre) {
 
-		int temp = SDN.ShorestDistance(k, fisrtVM,firstMB );
-		int temp2 = SDN.ShorestDistance(k, secondVm,lastMB );
+		int temp = SDN.ShorestDistance(k, mb,pm );
 
-		return (temp+temp2+ mbDistance)*fre;
+		return (temp)*fre;
 	}
 
 	private static int MBDistance(List<Integer> mb) {

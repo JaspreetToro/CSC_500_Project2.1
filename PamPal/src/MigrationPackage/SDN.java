@@ -55,7 +55,7 @@ public class SDN {
 		inputs[1] = in.nextInt();	
 
 		// input for l
-		System.out.println("Please enter the number of VM pairs randomly placed. For example 1 = 2 VMs. \nMust be between 1 and " + numPms*inputs[1]);
+		System.out.println("Please enter the number of VM pairs randomly placed. For example 1 = 2 VMs. \nMust be between 1 and " + (numPms*inputs[1])/2);
 		inputs[2] = in.nextInt();	
 
 		// input for m
